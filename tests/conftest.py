@@ -34,7 +34,7 @@ def snapshot(snapshot: SnapshotAssertion) -> SnapshotAssertion:
 
 @pytest.fixture
 def mock_import():
-    """Patch the real recorder ``async_import_statistics`` and yield the mock.
+    """Patch the real recorder ``async_add_external_statistics`` and yield the mock.
 
     Deliberately keeps Home Assistant's real ``StatisticMetaData`` /
     ``StatisticData`` / ``StatisticMeanType`` in play — only the side-effectful
@@ -48,7 +48,7 @@ def mock_import():
     """
     mock = MagicMock()
     with patch(
-        "homeassistant.components.recorder.statistics.async_import_statistics",
+        "homeassistant.components.recorder.statistics.async_add_external_statistics",
         mock,
     ):
         yield mock

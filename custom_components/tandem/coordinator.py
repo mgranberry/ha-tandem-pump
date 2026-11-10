@@ -2924,14 +2924,14 @@ class TandemCoordinator(DataUpdateCoordinator):
     async def _import_statistics(self, pump_events: list[dict[str, Any]]) -> list[str]:
         """Import pump events as HA long-term statistics.
 
-        Creates correctly-timestamped 5-minute statistics entries so
-        Statistics Graph cards show accurate historical data. Returns the
+        Imports hourly pump-event statistics under integration-owned IDs, separate
+        from live sensor statistics. Returns the
         statistic types that failed to import (empty on success); the poll
         path ignores it, the import_history action raises on it.
         """
         try:
             from homeassistant.components.recorder.statistics import (
-                async_import_statistics,
+                async_add_external_statistics,
             )
             from homeassistant.components.recorder.models import (
                 StatisticData,
@@ -3065,7 +3065,6 @@ class TandemCoordinator(DataUpdateCoordinator):
 
         # Import each statistic type — each in its own try/except so a failure
         # in one type does not prevent the others from being recorded.
-        entity_prefix = f"sensor.{DOMAIN}"
 
         stat_types = [
             ("last_glucose_level_mmol", "Last glucose level mmol", "mmol/L", "CGM", cgm_stats),
@@ -3086,12 +3085,12 @@ class TandemCoordinator(DataUpdateCoordinator):
                     mean_type=StatisticMeanType.ARITHMETIC,
                     has_sum=False,
                     name=name,
-                    source="recorder",
-                    statistic_id=f"{entity_prefix}_{stat_id_suffix}",
+                    source=DOMAIN,
+                    statistic_id=f"{DOMAIN}:{stat_id_suffix}",
                     unit_of_measurement=unit,
                     unit_class=None,
                 )
-                async_import_statistics(self.hass, meta, stats)
+                async_add_external_statistics(self.hass, meta, stats)
                 _LOGGER.info("[Tandem] Imported %d %s statistics", len(stats), log_label)
             except Exception as e:
                 _LOGGER.warning("Tandem: Failed to import %s statistics: %s", log_label, e)

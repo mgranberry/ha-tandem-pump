@@ -271,7 +271,7 @@ class TestMealCarbStatisticsFromBolusRequests:
         ]
         await coordinator._import_statistics(events)
 
-        call = next(c for c in mock_import.call_args_list if c[0][1]["statistic_id"] == f"sensor.{DOMAIN}_meal_carbs")
+        call = next(c for c in mock_import.call_args_list if c[0][1]["statistic_id"] == f"{DOMAIN}:meal_carbs")
         stats = call[0][2]
         assert [(s["start"].hour, s["mean"]) for s in stats] == [(8, 40.0), (18, 60.0)]
 
@@ -284,5 +284,5 @@ class TestMealCarbStatisticsFromBolusRequests:
         ]
         await coordinator._import_statistics(events)
 
-        call = next(c for c in mock_import.call_args_list if c[0][1]["statistic_id"] == f"sensor.{DOMAIN}_meal_carbs")
+        call = next(c for c in mock_import.call_args_list if c[0][1]["statistic_id"] == f"{DOMAIN}:meal_carbs")
         assert [(s["start"].hour, s["mean"]) for s in call[0][2]] == [(18, 80.0)]

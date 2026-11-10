@@ -198,7 +198,7 @@ class TestLtsImportUsesClampedValue:
         coordinator._parse_pump_events(events, data)
         await coordinator._import_statistics(events)
 
-        full_id = f"sensor.{DOMAIN}_last_glucose_level_mmol"
+        full_id = f"{DOMAIN}:last_glucose_level_mmol"
         call = next(c for c in mock_import.call_args_list if c[0][1]["statistic_id"] == full_id)
         stats = call[0][2]
         expected_mmol = round(CGM_GLUCOSE_MGDL_MAX * 0.0555, 2)

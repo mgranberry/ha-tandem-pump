@@ -12,7 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.tandem.const import DOMAIN
 
 # The ``mock_import`` fixture (shared, in conftest.py) patches the real recorder
-# ``async_import_statistics`` and keeps HA's real StatisticMetaData/StatisticData
+# ``async_add_external_statistics`` and keeps HA's real StatisticMetaData/StatisticData
 # in play, so captured calls carry real dicts — assert with subscript access.
 
 
@@ -115,8 +115,8 @@ class TestZeroAndNoneValueGuards:
         await coordinator._import_statistics(events)
 
         stat_ids = {c[0][1]["statistic_id"] for c in mock_import.call_args_list}
-        assert f"sensor.{DOMAIN}_active_insulin_iob" not in stat_ids
-        assert f"sensor.{DOMAIN}_total_bolus" in stat_ids
+        assert f"{DOMAIN}:active_insulin_iob" not in stat_ids
+        assert f"{DOMAIN}:total_bolus" in stat_ids
 
 
 # ===========================================================================
@@ -128,7 +128,7 @@ class TestImportExceptionResilience:
     """A failure in one stat-type import must not prevent the others."""
 
     async def test_exception_in_first_import_does_not_stop_others(self, hass: HomeAssistant, mock_import):
-        """Exception raised by async_import_statistics is caught; remaining stats proceed."""
+        """Exception raised by async_add_external_statistics is caught; remaining stats proceed."""
         coordinator = await _make_coordinator(hass)
         # First call (CGM) raises; second call (carbs) should still run.
         mock_import.side_effect = [Exception("recorder unavailable"), None]
@@ -165,7 +165,7 @@ class TestCorrectionBolusStatistic:
         ]
         await coordinator._import_statistics(events)
         stat_ids = {c[0][1]["statistic_id"] for c in mock_import.call_args_list}
-        assert "sensor.tandem_correction_bolus" in stat_ids
+        assert "tandem:correction_bolus" in stat_ids
 
     async def test_correction_bolus_nonzero_delivery_status_skipped(self, hass: HomeAssistant, mock_import):
         """Event 280 with delivery_status != 0 (not completed) does not generate a stat."""

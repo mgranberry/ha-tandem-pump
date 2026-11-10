@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - develop
 
 ### Fixed
+- **Imported pump history no longer collides with recorder statistics.** Imported series now use
+  `tandem:` statistic IDs, separate from live sensor IDs. Update statistics graphs to use the new
+  IDs and run `tandem.import_history` to backfill them; existing sensor statistics are retained.
 - **Last site change no longer guesses from cartridge changes.** Tandem Source doesn't report
   cannula fills, so the sensor fell back to the last cartridge change, which is wrong whenever a
   cartridge is changed without a site change. It now shows a time only from a real cannula-fill

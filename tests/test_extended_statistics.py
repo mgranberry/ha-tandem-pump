@@ -13,7 +13,7 @@ from conftest import make_tandem_coordinator
 from custom_components.tandem.const import DOMAIN
 
 # The ``mock_import`` fixture (shared, in conftest.py) patches the real recorder
-# ``async_import_statistics`` and keeps HA's real StatisticMetaData/StatisticData
+# ``async_add_external_statistics`` and keeps HA's real StatisticMetaData/StatisticData
 # in play — captured calls carry real dicts, so assert with subscript access.
 
 
@@ -113,13 +113,13 @@ async def _make_coordinator(hass: HomeAssistant):
 
 
 def _imported_stat_ids(mock_import: MagicMock) -> set[str]:
-    """Return the set of statistic_id values from all async_import_statistics calls."""
+    """Return the set of statistic_id values from all async_add_external_statistics calls."""
     return {c[0][1]["statistic_id"] for c in mock_import.call_args_list}
 
 
 def _find_stat_call(mock_import: MagicMock, stat_id_suffix: str):
     """Find the import call for a given statistic_id suffix and return (meta, stats)."""
-    full_id = f"sensor.{DOMAIN}_{stat_id_suffix}"
+    full_id = f"{DOMAIN}:{stat_id_suffix}"
     call = next(c for c in mock_import.call_args_list if c[0][1]["statistic_id"] == full_id)
     return call[0][1], call[0][2]
 
@@ -191,7 +191,7 @@ class TestBolusStatisticsImport:
         ]
         await coordinator._import_statistics(events)
 
-        assert f"sensor.{DOMAIN}_total_bolus" in _imported_stat_ids(mock_import)
+        assert f"{DOMAIN}:total_bolus" in _imported_stat_ids(mock_import)
         meta, stats = _find_stat_call(mock_import, "total_bolus")
         assert meta["unit_of_measurement"] == "units"
         assert meta["has_mean"] is True
@@ -218,21 +218,21 @@ class TestBolusStatisticsImport:
 
         ids = _imported_stat_ids(mock_import)
         # IOB should still be collected (not filtered by completion_status)
-        assert f"sensor.{DOMAIN}_active_insulin_iob" in ids
+        assert f"{DOMAIN}:active_insulin_iob" in ids
         # But bolus stats should NOT be present
-        assert f"sensor.{DOMAIN}_total_bolus" not in ids
+        assert f"{DOMAIN}:total_bolus" not in ids
 
     async def test_extended_bolus_event_21_included(self, hass: HomeAssistant, mock_import):
         """BOLEX_COMPLETED (event_id=21) is also included in bolus statistics."""
         coordinator = await _make_coordinator(hass)
         await coordinator._import_statistics([_make_bolex_completed_event(seq=1, insulin_delivered=6.0)])
-        assert f"sensor.{DOMAIN}_total_bolus" in _imported_stat_ids(mock_import)
+        assert f"{DOMAIN}:total_bolus" in _imported_stat_ids(mock_import)
 
     async def test_zero_insulin_excluded(self, hass: HomeAssistant, mock_import):
         """Bolus events with zero insulin_delivered are not imported."""
         coordinator = await _make_coordinator(hass)
         await coordinator._import_statistics([_make_bolus_completed_event(seq=1, insulin_delivered=0.0)])
-        assert f"sensor.{DOMAIN}_total_bolus" not in _imported_stat_ids(mock_import)
+        assert f"{DOMAIN}:total_bolus" not in _imported_stat_ids(mock_import)
 
 
 # ===========================================================================
@@ -256,13 +256,14 @@ class TestAllSixStatisticsTypes:
         await coordinator._import_statistics(events)
 
         ids = _imported_stat_ids(mock_import)
+        assert all(call.args[1]["source"] == DOMAIN for call in mock_import.call_args_list)
         assert ids == {
-            f"sensor.{DOMAIN}_last_glucose_level_mmol",
-            f"sensor.{DOMAIN}_active_insulin_iob",
-            f"sensor.{DOMAIN}_basal_rate",
-            f"sensor.{DOMAIN}_meal_carbs",
-            f"sensor.{DOMAIN}_total_bolus",
-            f"sensor.{DOMAIN}_correction_bolus",
+            f"{DOMAIN}:last_glucose_level_mmol",
+            f"{DOMAIN}:active_insulin_iob",
+            f"{DOMAIN}:basal_rate",
+            f"{DOMAIN}:meal_carbs",
+            f"{DOMAIN}:total_bolus",
+            f"{DOMAIN}:correction_bolus",
         }
 
     async def test_iob_and_bolus_from_same_event_20(self, hass: HomeAssistant, mock_import):
@@ -271,8 +272,8 @@ class TestAllSixStatisticsTypes:
         await coordinator._import_statistics([_make_bolus_completed_event(seq=1, insulin_delivered=2.5)])
 
         ids = _imported_stat_ids(mock_import)
-        assert f"sensor.{DOMAIN}_active_insulin_iob" in ids
-        assert f"sensor.{DOMAIN}_total_bolus" in ids
+        assert f"{DOMAIN}:active_insulin_iob" in ids
+        assert f"{DOMAIN}:total_bolus" in ids
 
 
 # ===========================================================================
@@ -289,7 +290,7 @@ class TestCorrectionBolusStatisticsImport:
         events = [_make_bolus_delivery_event(seq=1, correction_mu=2000)]
         await coordinator._import_statistics(events)
 
-        assert f"sensor.{DOMAIN}_correction_bolus" in _imported_stat_ids(mock_import)
+        assert f"{DOMAIN}:correction_bolus" in _imported_stat_ids(mock_import)
         meta, stats = _find_stat_call(mock_import, "correction_bolus")
         assert meta["unit_of_measurement"] == "units"
         assert meta["has_mean"] is True
@@ -313,13 +314,13 @@ class TestCorrectionBolusStatisticsImport:
             _make_bolus_delivery_event(seq=2, correction_mu=1500, delivery_status=2),
         ]
         await coordinator._import_statistics(events)
-        assert f"sensor.{DOMAIN}_correction_bolus" not in _imported_stat_ids(mock_import)
+        assert f"{DOMAIN}:correction_bolus" not in _imported_stat_ids(mock_import)
 
     async def test_zero_correction_excluded(self, hass: HomeAssistant, mock_import):
         """correction_mu of 0 (meal-only bolus, no correction component) is excluded."""
         coordinator = await _make_coordinator(hass)
         await coordinator._import_statistics([_make_bolus_delivery_event(seq=1, correction_mu=0, delivery_status=0)])
-        assert f"sensor.{DOMAIN}_correction_bolus" not in _imported_stat_ids(mock_import)
+        assert f"{DOMAIN}:correction_bolus" not in _imported_stat_ids(mock_import)
 
     async def test_multiple_correction_boluses(self, hass: HomeAssistant, mock_import):
         """Multiple correction bolus events all produce StatisticData entries."""

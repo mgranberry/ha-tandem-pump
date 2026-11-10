@@ -8,6 +8,11 @@
 > `sensor.tandem_*` by construction (they now match the live entity ids, fixing the former
 > double-prefix mismatch). The two-data-path decision itself still stands; only the id prefix changed.
 
+> **Update:** Imported series now use integration-owned `tandem:` statistic IDs and
+> `async_add_external_statistics`, avoiding collisions with automatically recorded live sensors.
+> Existing `sensor.tandem_*` statistics remain in place; use `tandem.import_history` to backfill
+> the new series and select them in statistics graphs.
+
 ## Context
 
 Home Assistant users expect to chart historical pump data (glucose trends, insulin delivery, basal rates) using the Statistics Graph card. The integration needed a strategy for producing HA long-term statistics from Tandem Source API data.

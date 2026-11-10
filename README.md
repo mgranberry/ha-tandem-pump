@@ -147,6 +147,13 @@ using your existing Tandem Source account. No extra hardware required.
 **Plus 6 long-term statistics** (CGM, IOB, basal, carbs, total bolus, correction bolus) compatible with
 HA's Statistics Graph card. Import months of history with `tandem.import_history`.
 
+Imported statistics use the IDs `tandem:last_glucose_level_mmol`, `tandem:active_insulin_iob`,
+`tandem:basal_rate`, `tandem:meal_carbs`, `tandem:total_bolus`, and `tandem:correction_bolus`.
+Select these IDs in statistics graphs to display imported pump history. Live `sensor.tandem_*`
+entities retain their own automatically recorded statistics. Existing statistics are not moved or
+deleted; graphs using the old sensor IDs continue to show those records. To populate the new
+imported series with older data, run `tandem.import_history` for the desired date range.
+
 ---
 
 ## Requirements
