@@ -647,8 +647,7 @@ def map_pump_log_event(event: dict[str, Any]) -> dict[str, Any] | None:
     (9/34/35, battery level from ``abc``), alerts/alarms (4/5/6/26/28) and
     CGM session (212/213/214, G7 394/447) and CGM alerts (171/172, 369/370/371)
     and PLGS (140) are mapped. Still unmapped (no sensor consumes them): ShelfMode
-    (53), USB charging (36/37), daily basal (81 — not in the tconnectsync catalog, so
-    its BFF field names are unknown), new day (90). Codes 8 and 27 appear
+    (53), USB charging (36/37), and new day (90). Codes 8 and 27 appear
     live but are absent from the tconnectsync event catalog, so they stay
     unmapped pending identification. Live eventProperties keys are recorded in
     .remember/BFF-LIVE-VALIDATION-2026-09-06.md.
@@ -820,6 +819,13 @@ def map_pump_log_event(event: dict[str, Any]) -> dict[str, Any] | None:
         evt["sensor_type"] = _CGM_SENSOR_TYPE_MAP.get(sensor_type, f"Unknown ({sensor_type})")
         evt["user_mode"] = g("usermode")
         evt["pump_control_state"] = g("pumpcontrolstate")
+
+    elif event_id == EVT_DAILY_BASAL:
+        # Source BFF returns the pump's selected IOB as a float in units.
+        evt["event_name"] = "DailyBasal"
+        evt["iob"] = g("iob")
+        evt["daily_total_basal"] = g("dailytotalbasal")
+        evt["last_basal_rate"] = g("lastbasalrate")
 
     elif event_id in (EVT_STATUS, EVT_BATTERY_1, EVT_BATTERY_2):
         # Pump status / battery-detail events. `abc` (actual battery charge) is the

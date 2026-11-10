@@ -25,7 +25,6 @@ from custom_components.tandem.tandem_api import (
     EVT_BOLUS_REQUESTED_MSG2,
     EVT_BOLUS_REQUESTED_MSG3,
     EVT_BATTERY_1,
-    EVT_DAILY_BASAL,
     EVT_STATUS,
     TandemSourceClient,
     TandemAuthError,
@@ -1132,9 +1131,9 @@ class TestMapPumpLogEventBoundaries:
     """Events still unmapped return None; malformed input returns None."""
 
     def test_unmapped_event_returns_none(self):
-        # Daily basal (81) is deliberately not yet mapped (battery follow-up).
+        # New day (90) is not mapped.
         evt = map_pump_log_event(
-            {"eventCode": EVT_DAILY_BASAL, "pumpDateTime": "2026-09-06T00:00:00", "eventProperties": {}}
+            {"eventCode": 90, "pumpDateTime": "2026-09-06T00:00:00", "eventProperties": {}}
         )
         assert evt is None
 

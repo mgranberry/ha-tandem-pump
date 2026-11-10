@@ -15,7 +15,7 @@ from .const import (
     DOMAIN,
     TANDEM_DATA_STALE_TIMEDELTA,
     TANDEM_IOB_MAX_AGE,
-    TANDEM_SENSOR_KEY_LAST_BOLUS_TIMESTAMP,
+    TANDEM_SENSOR_KEY_IOB_TIMESTAMP,
     TANDEM_SENSOR_KEY_LASTSG_TIMESTAMP,
     TANDEM_SENSOR_KEY_SOFTWARE_VERSION,
 )
@@ -40,12 +40,12 @@ def is_data_stale(coordinator_data: dict[str, Any] | None) -> bool:
 def is_iob_stale(coordinator_data: dict[str, Any] | None) -> bool:
     """Check whether the IOB value is too old to show as current.
 
-    IOB comes from the last bolus event and is not decayed, so its age is the
-    age of that bolus. Missing timestamp counts as stale (null-not-guess).
+    Use the timestamp of the actual IOB source, not the last bolus.
+    Missing timestamp counts as stale (null-not-guess).
     """
     if not coordinator_data:
         return True
-    return _older_than(coordinator_data.get(TANDEM_SENSOR_KEY_LAST_BOLUS_TIMESTAMP), TANDEM_IOB_MAX_AGE)
+    return _older_than(coordinator_data.get(TANDEM_SENSOR_KEY_IOB_TIMESTAMP), TANDEM_IOB_MAX_AGE)
 
 
 def _older_than(ts: Any, max_age: timedelta) -> bool:

@@ -98,6 +98,7 @@ from .const import (
     TANDEM_CGM_ALERT_MAP,
     TANDEM_SENSOR_KEY_ACTIVE_ALERTS_COUNT,
     TANDEM_SENSOR_KEY_ACTIVE_INSULIN,
+    TANDEM_SENSOR_KEY_IOB_TIMESTAMP,
     TANDEM_SENSOR_KEY_ACTIVE_PROFILE,
     TANDEM_SENSOR_KEY_ACTIVE_PROFILE_ATTRS,
     TANDEM_SENSOR_KEY_ACTIVITY_MODE,
@@ -1001,6 +1002,11 @@ class TandemCoordinator(DataUpdateCoordinator):
             data[TANDEM_SENSOR_KEY_LAST_MEAL_BOLUS] = UNAVAILABLE
             data[TANDEM_SENSOR_KEY_LAST_MEAL_BOLUS_ATTRS] = {}
 
+        data[TANDEM_SENSOR_KEY_IOB_TIMESTAMP] = data.get(TANDEM_SENSOR_KEY_LAST_BOLUS_TIMESTAMP, UNAVAILABLE)
+        data[f"{TANDEM_SENSOR_KEY_ACTIVE_INSULIN}_attributes"] = {
+            "source": "therapy_timeline_bolus", "source_timestamp": data[TANDEM_SENSOR_KEY_IOB_TIMESTAMP],
+        }
+
         # ── Basal events ─────────────────────────────────────────────
         try:
             basal_entries = timeline.get("basal", [])
@@ -1424,6 +1430,33 @@ class TandemCoordinator(DataUpdateCoordinator):
             data[TANDEM_SENSOR_KEY_ACTIVE_INSULIN] = UNAVAILABLE
             data[TANDEM_SENSOR_KEY_LAST_MEAL_BOLUS] = UNAVAILABLE
             data[TANDEM_SENSOR_KEY_LAST_MEAL_BOLUS_ATTRS] = {}
+
+        # Event 81 carries the pump's frequently sampled IOB. If no such
+        # event exists, retain the legacy bolus fallback with its own timestamp.
+        data[TANDEM_SENSOR_KEY_IOB_TIMESTAMP] = data.get(TANDEM_SENSOR_KEY_LAST_BOLUS_TIMESTAMP, UNAVAILABLE)
+        iob_attrs = data[f"{TANDEM_SENSOR_KEY_ACTIVE_INSULIN}_attributes"]
+        iob_attrs.update({"source": "bolus_completed", "source_timestamp": data[TANDEM_SENSOR_KEY_IOB_TIMESTAMP]})
+        if daily_basal_events:
+            latest = daily_basal_events[-1]
+            value = latest.get("iob")
+            timestamp = latest["timestamp"].replace(tzinfo=tz)
+            data[TANDEM_SENSOR_KEY_IOB_TIMESTAMP] = timestamp
+            iob_attrs.update({
+                "source": "daily_basal", "source_event_code": EVT_DAILY_BASAL,
+                "source_timestamp": timestamp, "source_sequence": latest.get("seq"),
+                "iob_model": "pump_selected_unconfirmed",
+                "readings": [
+                    {"t": event["timestamp"].replace(tzinfo=tz).isoformat(), "v": round(float(event["iob"]), 2)}
+                    for event in daily_basal_events[-24:]
+                    if isinstance(event.get("iob"), (float, int)) and not isinstance(event.get("iob"), bool)
+                    and math.isfinite(event["iob"]) and event["iob"] >= 0
+                ],
+            })
+            data[TANDEM_SENSOR_KEY_ACTIVE_INSULIN] = (
+                round(float(value), 2)
+                if isinstance(value, (float, int)) and not isinstance(value, bool)
+                and math.isfinite(value) and value >= 0 else UNAVAILABLE
+            )
 
         # ── Basal events ─────────────────────────────────────────────
         try:

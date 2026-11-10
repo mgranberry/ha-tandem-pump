@@ -107,7 +107,7 @@ class TandemEntity(CoordinatorEntity["TandemCoordinator"]):
             iob_stale = is_iob_stale(self.coordinator.data)
             if iob_stale and not self._iob_gated:
                 _LOGGER.info(
-                    "Tandem: IOB unavailable — the last pump IOB (from the last bolus) is older than %s",
+                    "Tandem: IOB unavailable — the last pump IOB reading is older than %s",
                     TANDEM_IOB_MAX_AGE,
                 )
             self._iob_gated = iob_stale

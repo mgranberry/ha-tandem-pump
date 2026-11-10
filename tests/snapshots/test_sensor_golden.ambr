@@ -165,6 +165,8 @@
       'attribution': 'Data provided by Tandem Source',
       'friendly_name': 'Tandem Active insulin (IOB)',
       'icon': 'mdi:water-alert',
+      'source': 'therapy_timeline_bolus',
+      'source_timestamp': HAFakeDatetime(2024, 1, 15, 3, 26, 40, tzinfo=zoneinfo.ZoneInfo(key='US/Pacific')),
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
       'unit_of_measurement': 'units',
     }),

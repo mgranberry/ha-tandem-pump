@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - develop
 
 ### Fixed
+- **Use the frequently recorded daily-basal IOB for the active insulin sensor.** Its source
+  event, timestamp, sequence and recent readings are available as attributes; older bolus IOB
+  remains a fallback when daily-basal events are absent. Staleness uses the source timestamp.
 - **Imported pump history no longer collides with recorder statistics.** Imported series now use
   `tandem:` statistic IDs, separate from live sensor IDs. Update statistics graphs to use the new
   IDs and run `tandem.import_history` to backfill them; existing sensor statistics are retained.

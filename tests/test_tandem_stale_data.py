@@ -16,7 +16,7 @@ from custom_components.tandem.const import (
     DOMAIN,
     TANDEM_DATA_STALE_TIMEDELTA,
     TANDEM_IOB_MAX_AGE,
-    TANDEM_SENSOR_KEY_LAST_BOLUS_TIMESTAMP,
+    TANDEM_SENSOR_KEY_IOB_TIMESTAMP,
     TANDEM_SENSOR_KEY_LASTSG_MMOL,
     TANDEM_SENSOR_KEY_LASTSG_TIMESTAMP,
     TANDEM_SENSOR_KEY_BASAL_RATE,
@@ -114,15 +114,15 @@ class TestIsDataStale:
 
 
 class TestIsIobStale:
-    """Boundary tests for is_iob_stale() (age of the bolus that carried the IOB)."""
+    """Boundary tests for is_iob_stale() (age of the event that carried the IOB)."""
 
     @patch("custom_components.tandem.helpers.dt_util")
     def test_boundary(self, mock_dt_util):
         """Stale at exactly TANDEM_IOB_MAX_AGE, fresh one second before."""
         now = datetime(2026, 10, 15, 10, 0, 0, tzinfo=timezone.utc)
         mock_dt_util.utcnow.return_value = now
-        at = {TANDEM_SENSOR_KEY_LAST_BOLUS_TIMESTAMP: now - TANDEM_IOB_MAX_AGE}
-        under = {TANDEM_SENSOR_KEY_LAST_BOLUS_TIMESTAMP: now - TANDEM_IOB_MAX_AGE + timedelta(seconds=1)}
+        at = {TANDEM_SENSOR_KEY_IOB_TIMESTAMP: now - TANDEM_IOB_MAX_AGE}
+        under = {TANDEM_SENSOR_KEY_IOB_TIMESTAMP: now - TANDEM_IOB_MAX_AGE + timedelta(seconds=1)}
         assert is_iob_stale(at) is True
         assert is_iob_stale(under) is False
 
@@ -130,9 +130,9 @@ class TestIsIobStale:
         """No data, no key, or UNAVAILABLE timestamp → stale."""
         assert is_iob_stale(None) is True
         assert is_iob_stale({}) is True
-        assert is_iob_stale({TANDEM_SENSOR_KEY_LAST_BOLUS_TIMESTAMP: STATE_UNAVAILABLE}) is True
+        assert is_iob_stale({TANDEM_SENSOR_KEY_IOB_TIMESTAMP: STATE_UNAVAILABLE}) is True
         # Malformed value fails closed to stale instead of raising in `available`.
-        assert is_iob_stale({TANDEM_SENSOR_KEY_LAST_BOLUS_TIMESTAMP: "2026-10-15T10:00"}) is True
+        assert is_iob_stale({TANDEM_SENSOR_KEY_IOB_TIMESTAMP: "2026-10-15T10:00"}) is True
 
 
 class TestSensorAvailability:
@@ -185,20 +185,17 @@ class TestSensorAvailability:
 
     def test_decision_inputs_available_when_fresh(self):
         """Decision-input sensors are available when data is fresh."""
-        fresh = {**self._fresh(), TANDEM_SENSOR_KEY_LAST_BOLUS_TIMESTAMP: datetime.now(timezone.utc)}
+        fresh = {**self._fresh(), TANDEM_SENSOR_KEY_IOB_TIMESTAMP: datetime.now(timezone.utc)}
         for key in (TANDEM_SENSOR_KEY_BASAL_RATE, TANDEM_SENSOR_KEY_ACTIVE_INSULIN):
             entity = self._make_sensor(key, fresh)
             assert entity.available is True, f"{key} should be available when fresh"
 
-    def test_iob_unavailable_when_its_bolus_is_old(self):
-        """IOB goes unavailable once its bolus is past TANDEM_IOB_MAX_AGE, even with fresh CGM.
-
-        IOB is only reported on boluses and not decayed; live 2026-10-15 showed a
-        4 h-old IOB as current while the pump read 0.
+    def test_iob_unavailable_when_its_reading_is_old(self):
+        """IOB goes unavailable once its source event is too old, even with fresh CGM.
         """
         data = {
             **self._fresh(),
-            TANDEM_SENSOR_KEY_LAST_BOLUS_TIMESTAMP: datetime.now(timezone.utc)
+            TANDEM_SENSOR_KEY_IOB_TIMESTAMP: datetime.now(timezone.utc)
             - TANDEM_IOB_MAX_AGE
             - timedelta(minutes=1),
         }
@@ -206,15 +203,15 @@ class TestSensorAvailability:
         # Other decision inputs are unaffected by the IOB gate.
         assert self._make_sensor(TANDEM_SENSOR_KEY_BASAL_RATE, data).available is True
 
-    def test_iob_unavailable_without_bolus_timestamp(self):
-        """No bolus timestamp → IOB age unknown → unavailable (null-not-guess)."""
+    def test_iob_unavailable_without_iob_timestamp(self):
+        """No IOB timestamp → IOB age unknown → unavailable (null-not-guess)."""
         assert self._make_sensor(TANDEM_SENSOR_KEY_ACTIVE_INSULIN, self._fresh()).available is False
 
     def test_iob_gate_logs_once_per_transition(self, caplog):
         """The gate logs when IOB goes unavailable, not on every availability check."""
         old = datetime.now(timezone.utc) - TANDEM_IOB_MAX_AGE - timedelta(minutes=1)
         entity = self._make_sensor(
-            TANDEM_SENSOR_KEY_ACTIVE_INSULIN, {**self._fresh(), TANDEM_SENSOR_KEY_LAST_BOLUS_TIMESTAMP: old}
+            TANDEM_SENSOR_KEY_ACTIVE_INSULIN, {**self._fresh(), TANDEM_SENSOR_KEY_IOB_TIMESTAMP: old}
         )
         with caplog.at_level("INFO", logger="custom_components.tandem.entity"):
             assert entity.available is False
